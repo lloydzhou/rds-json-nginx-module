@@ -770,9 +770,10 @@ ngx_http_rds_json_output_field(ngx_http_request_t *r,
                 *last++ = '"';
                 last = ngx_copy(last, prop[i].prefix.data, prop[i].prefix.len);
                 last = ngx_copy(last, data, len);
+                if (prop[i].suffix.len > 0) last = ngx_copy(last, prop[i].suffix.data, prop[i].suffix.len);
                 *last++ = '"';
                 last = ngx_copy(last, " -->", 4);
-                size += len + prop[i].property.len + prop[i].prefix.len + 32;
+                size += len + prop[i].property.len + prop[i].prefix.len + prop[i].suffix.len + 32;
             }
         }
     }

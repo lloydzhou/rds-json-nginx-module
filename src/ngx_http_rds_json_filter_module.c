@@ -102,7 +102,7 @@ static ngx_command_t  ngx_http_rds_json_commands[] = {
     { ngx_string("rds_json_ssi"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF
           |NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
-          |NGX_CONF_TAKE3,
+          |NGX_CONF_TAKE3|NGX_CONF_TAKE4,
       ngx_http_rds_json_ssi_property,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -718,10 +718,12 @@ ngx_http_rds_json_ssi_property(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     /* process the user property key */
-    process_value (prop->key, value[1], escape, p)
-    process_value (prop->prefix, value[2], escape, p)
-    process_value (prop->property, value[3], escape, p)
-
+    process_value (prop->property, value[1], escape, p)
+    process_value (prop->key, value[2], escape, p)
+    process_value (prop->prefix, value[3], escape, p)
+    if (value[4].len > 0)
+        process_value (prop->suffix, value[4], escape, p)
+    else prop->suffix.len = 0;
     return NGX_CONF_OK;
 }
 
