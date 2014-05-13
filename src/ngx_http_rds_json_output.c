@@ -478,6 +478,7 @@ ngx_http_rds_json_output_field(ngx_http_request_t *r,
     ngx_uint_t                           i;
     ngx_http_rds_json_loc_conf_t        *conf;
     ngx_uint_t                           format;
+    ngx_http_rds_json_ssi_property_t        *prop;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_rds_json_filter_module);
 
@@ -754,7 +755,28 @@ ngx_http_rds_json_output_field(ngx_http_request_t *r,
             break;
         }
     }
-
+    /* start ssi*/
+    dd("start to ssi part %d", (int)(col->name.len));
+    if (conf->ssi_props) {
+        prop = conf->ssi_props->elts;
+        for (i = 0; i < conf->ssi_props->nelts; i++) {
+	    dd("debug %s == %s ", prop[i].key.data, col->name.data);
+            if (0 == ngx_strncmp(prop[i].key.data, col->name.data, col->name.len)) {
+		dd("add ssi part %s == %s", prop[i].key.data, col->name.data);
+                *last++ = ','; *last++ = '"';
+                last = ngx_copy(last, prop[i].property.data, prop[i].property.len);
+                *last++ = '"'; *last++ = ':';
+                last = ngx_copy(last, "<!--# include virtual=", 22);
+                *last++ = '"';
+                last = ngx_copy(last, prop[i].prefix.data, prop[i].prefix.len);
+                last = ngx_copy(last, data, len);
+                *last++ = '"';
+                last = ngx_copy(last, " -->", 4);
+                size += len + prop[i].property.len + prop[i].prefix.len + 32;
+            }
+        }
+    }
+    /* end ssi*/
     if (ctx->field_data_rest == 0 && ctx->cur_col == ctx->col_count - 1) {
         dd("last column in the row");
         if (format == json_format_normal) {

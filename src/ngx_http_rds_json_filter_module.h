@@ -39,6 +39,11 @@ typedef struct {
     ngx_http_complex_value_t        value;
 } ngx_http_rds_json_property_t;
 
+typedef struct {
+    ngx_str_t                       key;
+    ngx_str_t                       prefix;
+    ngx_str_t                       property;
+} ngx_http_rds_json_ssi_property_t;
 
 typedef struct {
     unsigned            requires_filters; /* :1 */
@@ -54,6 +59,8 @@ typedef struct {
     ngx_str_t                        success; /* rds_json_success_property
                                                * key */
     ngx_array_t                     *user_props; /* rds_json_user_property */
+
+    ngx_array_t                     *ssi_props;
 
     ngx_str_t                        errcode_key;
     ngx_str_t                        errstr_key;

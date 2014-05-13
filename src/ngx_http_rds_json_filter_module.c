@@ -52,6 +52,8 @@ static char * ngx_http_rds_json_success_property(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char * ngx_http_rds_json_user_property(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+static char * ngx_http_rds_json_ssi_property(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char * ngx_http_rds_json_errcode_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char * ngx_http_rds_json_errstr_key(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -93,6 +95,15 @@ static ngx_command_t  ngx_http_rds_json_commands[] = {
           |NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
           |NGX_CONF_TAKE2,
       ngx_http_rds_json_user_property,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("rds_json_ssi"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF
+          |NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF
+          |NGX_CONF_TAKE3,
+      ngx_http_rds_json_ssi_property,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -459,6 +470,10 @@ ngx_http_rds_json_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->user_props = prev->user_props;
     }
 
+    if (conf->ssi_props == NULL) {
+        conf->ssi_props = prev->ssi_props;
+    }
+
     if (conf->root.len == 0 && (conf->success.len || conf->user_props)) {
         ngx_str_set(&conf->root, "\"data\"");
     }
@@ -643,6 +658,69 @@ ngx_http_rds_json_success_property(ngx_conf_t *cf, ngx_command_t *cmd,
     if (p - jlcf->success.data != (ssize_t) jlcf->success.len) {
         return "sees buffer error";
     }
+
+    return NGX_CONF_OK;
+}
+
+#define process_value(target, source, escape, p) {\
+    escape = ngx_http_rds_json_escape_json_str(NULL, source.data,source.len);\
+    target.len = source.len + escape ;\
+    p = ngx_palloc(cf->pool, target.len);\
+    if (p == NULL) { return NGX_CONF_ERROR; }\
+    target.data = p;\
+    if (escape == 0) { \
+        p = ngx_copy(p, source.data, source.len);\
+    } else {\
+        p = (u_char *) ngx_http_rds_json_escape_json_str(p, source.data,source.len);\
+    }\
+    dd("ssi debug: %s", target.data);\
+    if (p - target.data != (ssize_t) target.len) {\
+        return "sees buffer error";\
+    }\
+}
+
+static char *
+ngx_http_rds_json_ssi_property(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    u_char                              *p;
+    ngx_str_t                           *value;
+    uintptr_t                            escape;
+    ngx_http_rds_json_ssi_property_t        *prop;
+    ngx_http_rds_json_loc_conf_t        *jlcf = conf;
+
+    value = cf->args->elts;
+
+    if (value[1].len == 0) {
+        return "takes an empty key";
+    }
+
+    if (value[2].len == 0) {
+        return "takes an empty url prefix";
+    }
+
+    if (value[3].len == 0) {
+        return "takes an empty property";
+    }
+
+    if (jlcf->ssi_props == NULL) {
+        jlcf->ssi_props = ngx_array_create(cf->pool, 4,
+                                        sizeof(ngx_http_rds_json_ssi_property_t));
+
+        if (jlcf->ssi_props == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    prop = ngx_array_push(jlcf->ssi_props);
+    if (prop == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    /* process the user property key */
+    process_value (prop->key, value[1], escape, p)
+    process_value (prop->prefix, value[2], escape, p)
+    process_value (prop->property, value[3], escape, p)
 
     return NGX_CONF_OK;
 }
